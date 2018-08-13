@@ -1,0 +1,14 @@
+FWL Commands
+					Command      Returns	Description
+Heart Beat 			- HB   			HB		:A keep alive message.  If message is not received more then once a second then automatically disarmed.
+Enable Arm 			- EA			EA		:Arms the launcher
+Disable Arm			- DA			DA		:Disarms the launcher Launch channels are ignored  
+Arm Status			- AS			ASx		:Checks the status of the Launcher "AS0" = Disarmed, "AS1" = Armed
+Launch Channel 		- LCxx			LCxx	:Which channel to fire.  Ex. "LC01"
+Channel Status 		- CSxx			CSx		:Ready = 0, Firing = 1, Open = 2 
+Battery Voltage 	- BV			BVx.xx	:Battery Voltage
+
+
+Bouns Items
+Launch Time			- LTxxxx		LT		:How Long to turn on the igniter in ms.  
+Error								ERx		:Some sort of error number
