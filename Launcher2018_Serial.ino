@@ -9,8 +9,8 @@
  * 
  * 
  * Description:
- * This is a 12 channel firework launcher with Serial Interface
- * Notes on the serial protocol can be found at the Github Link below
+ * This is a 12 channel firework launcher with SerialBT Interface
+ * Notes on the SerialBT protocol can be found at the Github Link below
  * 
  * Code Link: 
  * https://github.com/testtech13/Firework-Launcher-ESP32
@@ -34,6 +34,7 @@
  * PWM
  * 
  *** To Do List
+ * Define UNO VS ESP32
  * Low Battery
  * Error Codes
  * Armmed Indicator
@@ -52,10 +53,21 @@
 //Define IO lines
 
 //Battery Voltage Measurement setup
+#ifdef UseESP32
+#include "BluetoothSerial.h"
+BluetoothSerial SerialBT;
 #define ADCRef 3.47
 #define BatteryScale 3.197*ADCRef/4095  // voltage divider R1 10K R2 4.7K
-String BatteryVoltage;
 const int BatADC = 32; //Analog Pin number
+#endif
+
+#ifdef UseUNO
+#define ADCRef 3.47
+#define BatteryScale 3.197*ADCRef/1023  // voltage divider R1 10K R2 4.7K
+const int BatADC = 5; //Analog Pin number
+#endif
+
+String BatteryVoltage;
 const int LowBatVolt = 8*100;  //Default is 7 volts scaled by 100 to make the math simple to use map function
 const int HighBatVolt = 13*100; //Default is 13 volts scaled by 100 to make the math simple to use map function
 
@@ -95,6 +107,7 @@ uint8_t pinOutputArray[] = {0,13,11,10,8,7,5,4,2,A5,A3,A2,A1};
 #endif
 #ifdef UseESP32
 uint8_t pinOutputArray[] = {0,18,23,5,12,14,16,17,26,39,34,35,4};
+uint8_t VisualArmed = 33;
 #endif
 
 int CSRef = 0;
@@ -105,7 +118,7 @@ uint8_t pinRef = 0;
 //Interrupt ever 10ms
 void IRAM_ATTR GetBatteryVoltage(){
   portENTER_CRITICAL_ISR(&timerMux);
-  //Serial.println(analogRead(BatADC) * BatteryScale); //Debug
+  //SerialBTBT.println(analogRead(BatADC) * BatteryScale); //Debug
   //Two Stage igniter Power Level independed on Battery Voltage
   //Start igniter if armed and channel selected
   if(!queue.isEmpty()&& firetime ==0&&Arm){
@@ -150,21 +163,16 @@ void IRAM_ATTR GetBatteryVoltage(){
   LaunchPWMPercentInt = constrain(map(int(analogRead(BatADC) * BatteryScale*100), LowBatVolt, HighBatVolt, 255, 128),128,255);
   LowPower = LaunchPWMPercentInt/2;
   
-  //Serial.println(LaunchPWMPercentInt);
-  Serial.println(FlipFlop);
+  //SerialBT.println(LaunchPWMPercentInt);
 
-    //Visual Indicator if the Launcher is Arm
-    if(Arm && !FlipFlop){
-      ledcWrite(pinOutputArray[11], 255);
-      FlipFlop = !FlipFlop; 
-    }
-    else if(Arm && FlipFlop){
-      ledcWrite(pinOutputArray[11], 0);
-      FlipFlop = !FlipFlop; 
-    }
-    else{
-      ledcWrite(pinOutputArray[11EA], 0);
-    }
+ 
+  //Visual Indicator for if the device is armed
+  if(Arm){
+  digitalWrite(VisualArmed, !digitalRead(VisualArmed));
+  }
+  else {
+    digitalWrite(VisualArmed, false);
+  }
   
   }
   else{
@@ -175,14 +183,15 @@ void IRAM_ATTR GetBatteryVoltage(){
 
 
 void setup() {
-
-  Serial.begin(115200);
-  Serial.setTimeout(100);
+  SerialBT.begin("ESP32test");
+  SerialBT.setTimeout(100);
   //timer setup
   timer = timerBegin(0, 80, true);
   timerAttachInterrupt(timer, &GetBatteryVoltage, true);
   timerAlarmWrite(timer, 10000, true);
   timerAlarmEnable(timer);
+
+  pinMode(VisualArmed,OUTPUT);
 
   for (int i = 1; i < sizeof(pinOutputArray); i++){
     ledcAttachPin(pinOutputArray[i],i);
@@ -196,7 +205,7 @@ void setup() {
 
 //Function to Launch the Channel commanded
 void Launch(){
-  //Serial.print("Launching ");  //Debug
+  //SerialBT.print("Launching ");  //Debug
   pinRef = atoi(&ReadBuffer[2]);
   queue.push(pinRef);
 
@@ -206,59 +215,59 @@ void Launch(){
 void ChannelStatus(){
   CSRef = atoi(&ReadBuffer[2]);
   if (!digitalRead(pinInputArray[CSRef])){
-    Serial.println("2");
+    SerialBT.println("2");
   }
   else if(CSRef==pinRef){
-    Serial.println("1");
+    SerialBT.println("1");
   }
   else{
-    Serial.println("0");
+    SerialBT.println("0");
   }
 }
 
 void loop() {
   //Check to see if we got any new commands
-  if(Serial.available()){
+  if(SerialBT.available()){
     //if we got a new command make sure we have the whole command by looking for the newline
-    ReadBuffer = Serial.readStringUntil('\n');
+    ReadBuffer = SerialBT.readStringUntil('\n');
     //Heart Beat
     if (ReadBuffer == "HB"){
-        Serial.println("HB");
+        SerialBT.println("HB");
         //Reset Timer
     }
     //Read Battery Voltage
     else if (ReadBuffer == "BV"){
-      Serial.print("BV");
-      Serial.println(BatteryVoltage);
+      SerialBT.print("BV");
+      SerialBT.println(BatteryVoltage);
     }
     //Arm Launcher
     else if (ReadBuffer == "EA"){
-      Serial.println("EA");
+      SerialBT.println("EA");
       Arm = true;
     }
     //Disarm Launcher
     else if (ReadBuffer == "DA"){
-      Serial.println("DA");
+      SerialBT.println("DA");
       Arm = false;
     }
     //Arm Status - Good for showing if the unit is armed on the GUI
     else if (ReadBuffer == "AS"){
-      Serial.print("AS");
-      Serial.println(Arm);
+      SerialBT.print("AS");
+      SerialBT.println(Arm);
     }
     //Command to launch a channel
     else if (ReadBuffer.substring(0,2) == "LC"){
-      Serial.println(ReadBuffer);
+      SerialBT.println(ReadBuffer);
       Launch();
     }
     //Status of the channel
     else if (ReadBuffer.substring(0,2) == "CS"){
-      Serial.print(ReadBuffer.substring(0,2));
+      SerialBT.print(ReadBuffer.substring(0,2));
       ChannelStatus();
     }
     //Error trapping if command did not match
     else{
-      Serial.println("ER");
+      SerialBT.println("ER");
       
     }
   }
