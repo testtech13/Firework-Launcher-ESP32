@@ -9,4 +9,4 @@ Last is to use a ESP32 with integrated web page interface
 
 [Circuit board location](https://workspace.circuitmaker.com/Projects/Details/Cortland-Ratliff-3/Launcher)
 
-![CircuitBoard](https://lh3.googleusercontent.com/88bv9md-UKBiSGANKQF0EyMPPyZByIslE-QFwk4iwuXipZul8Z5gbdNYA9je4QkUQxxYlO8=s151)
+![CircuitBoard](https://github.com/testtech13/Firework-Launcher-ESP32/blob/master/Images/Firework%20Launcher.PNG)
