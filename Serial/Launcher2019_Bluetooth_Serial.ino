@@ -291,6 +291,8 @@ void setup() {
 void Launch(){
   //SerialBT.print("Launching ");  //Debug
   pinRef = atoi(&ReadBuffer[2]);
+      SerialBT.println(pinRef);
+    Serial.println(pinRef);
   queue.push(pinRef);
 
 }
